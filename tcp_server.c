@@ -93,7 +93,7 @@ void receiver_and_transmission(int sockfd)
     // keep receiving data until \0 is received
     while (!end)
     {
-        curr_data_length = recv(sockfd, &ack, 2, 0);
+        curr_data_length = recv(sockfd, &recvs, DATALEN, 0);
         if (curr_data_length == -1)
         {
             printf("send error!");
