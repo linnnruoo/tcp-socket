@@ -6,15 +6,17 @@ tcp_server.c: the source file of the server in tcp transmission
 ***********************************/
 
 #include "headsock.h"
+#include "stdbool.h"
 
 #define BACKLOG 10
 
 // receiving and transmitting function
 void receiver_and_transmission(int sockfd);
+bool is_packet_error();
 
 int main(void)
 {
-    int sockfd, con_fd, bind_status, connection_status; // ?
+    int sockfd, con_fd, bind_status, connection_status;
     struct sockaddr_in client_address;
     struct sockaddr_in host_address;
     int sin_size;
@@ -25,7 +27,7 @@ int main(void)
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
     {
-        printf("error in socket!");
+        printf("error in creating socket!\n");
         exit(1);
     }
 
@@ -38,14 +40,14 @@ int main(void)
     bind_status = bind(sockfd, (struct sockaddr *)&host_address, sizeof(struct sockaddr));
     if (bind_status < 0)
     {
-        printf("error in binding socket");
+        printf("error in binding socket\n");
         exit(1);
     }
     // start listening
     connection_status = listen(sockfd, BACKLOG);
     if (connection_status < 0)
     {
-        printf("Error in listening");
+        printf("Error in listening to socket connection\n");
         exit(1);
     }
 
@@ -84,40 +86,53 @@ void receiver_and_transmission(int sockfd)
     FILE *file;
     char recvs[DATALEN];
     struct ack_so ack;
-    int end, curr_data_length = 0, send_status;
+    int end = 0, bytes_read = 0, send_status;
     long lseek = 0;
-    end = 0;
+    long total_bytes_received = 0;
 
     printf("Receiving data\n");
 
     // keep receiving data until \0 is received
     while (!end)
     {
-        curr_data_length = recv(sockfd, &recvs, DATALEN, 0);
-        if (curr_data_length == -1)
+        bytes_read = recv(sockfd, &recvs, DATALEN, 0);
+        if (bytes_read == -1)
         {
-            printf("send error!");
+            printf("send error!\n");
             exit(1);
         }
-        if (recvs[curr_data_length - 1] == '\0')
-        {
-            end = 1;
-            // subtract to get the correct data size
-            // since the last one is end char \0
-            curr_data_length--;
-        }
-        memcpy((buffer + lseek), recvs, curr_data_length);
-        lseek += curr_data_length;
-    }
+        total_bytes_received += bytes_read;
 
-    ack.num = 1;
-    ack.len = 0;
-    // send ack to client
-    send_status = send(sockfd, &ack, 2, 0);
-    if (send_status == -1)
-    {
-        printf("send ack error!");
-        exit(1);
+        // TODO: emulate the probability of packet receiv error
+        // SEND NACK
+        if (is_packet_error())
+        {
+            ack.num = 2;
+            ack.len = 2;
+        }
+        else
+        {
+            if (recvs[bytes_read - 1] == '\0')
+            {
+                end = 1;
+                // subtract to get the correct data size
+                // since the last one is end char \0
+                bytes_read--;
+            }
+            memcpy((buffer + lseek), recvs, bytes_read);
+            lseek += bytes_read;
+
+            ack.num = 1;
+            ack.len = 0;
+        }
+
+        // send ack to client
+        send_status = send(sockfd, &ack, 2, 0);
+        if (send_status == -1)
+        {
+            printf("send ack error!\n");
+            exit(1);
+        }
     }
 
     file = fopen("receivedTCPFile.txt", "wt");
@@ -130,5 +145,11 @@ void receiver_and_transmission(int sockfd)
     fwrite(buffer, 1, lseek, file);
     fclose(file);
     printf("A file has been successfully received!\n");
-    printf("The total data received is %d bytes\n", (int)lseek);
+    printf("The correct total data received is %d bytes\n", (int)lseek);
+    printf("The total data bytes received with retransmission is %d bytes\n", (int)total_bytes_received);
+}
+
+bool is_packet_error()
+{
+    return ((rand() % 100) < (ERROR_RATE * 100));
 }
