@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     memcpy(&(server_address.sin_addr.s_addr), *address, sizeof(struct in_addr));
     bzero(&(server_address.sin_zero), 8);
 
-    // connect the socket with the host / test connection
+    // connect the socket with the host address
     connection_status = connect(socketfd, (struct sockaddr *)&server_address, sizeof(struct sockaddr));
     if (connection_status != 0)
     {
@@ -189,7 +189,9 @@ float transmission(FILE *file, int socketfd, long *len)
             }
             else
             {
-                printf("error in transmission\n");
+                // checking for other errors
+                // by simply removing exit(1), it will retransmit
+                printf("error in transmission.\n");
                 exit(1);
             }
         }

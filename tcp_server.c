@@ -1,8 +1,7 @@
 /**********************************
 tcp_server.c: the source file of the server in tcp transmission
 1. Receive file in small data units
-3. Send ACK for each data unit received
-2. Send final ACK
+3. Send ACK for each data unit received 
 ***********************************/
 
 #include "headsock.h"
@@ -11,7 +10,7 @@ tcp_server.c: the source file of the server in tcp transmission
 #define BACKLOG 10
 
 // receiving and transmitting function
-void receiver_and_transmission(int sockfd);
+void transmission(int sockfd);
 bool is_packet_error();
 
 int main(void)
@@ -36,14 +35,14 @@ int main(void)
     host_address.sin_addr.s_addr = htonl(INADDR_ANY);
     bzero(&(host_address.sin_zero), 8);
 
-    // bind socket
+    // bind socket to an address
     bind_status = bind(sockfd, (struct sockaddr *)&host_address, sizeof(struct sockaddr));
     if (bind_status < 0)
     {
         printf("error in binding socket\n");
         exit(1);
     }
-    // start listening
+    // start listening for connections
     connection_status = listen(sockfd, BACKLOG);
     if (connection_status < 0)
     {
@@ -55,7 +54,7 @@ int main(void)
     {
         printf("waiting for data\n");
         sin_size = sizeof(struct sockaddr_in);
-        // accept new packet
+        // accept new packet, blocks until there's a connection from the client
         con_fd = accept(sockfd, (struct sockaddr *)&client_address, &sin_size);
         if (con_fd < 0)
         {
@@ -67,7 +66,7 @@ int main(void)
         if (pid == 0)
         {
             close(sockfd);
-            receiver_and_transmission(con_fd);
+            transmission(con_fd);
             close(con_fd);
             exit(0);
         }
@@ -80,7 +79,7 @@ int main(void)
     exit(0);
 }
 
-void receiver_and_transmission(int sockfd)
+void transmission(int sockfd)
 {
     char buffer[BUFSIZE];
     FILE *file;
